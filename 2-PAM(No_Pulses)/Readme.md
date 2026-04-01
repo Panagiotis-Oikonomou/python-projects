@@ -1,0 +1,1 @@
+Creating a simulation of a binary PAM transmission system (without filters and pulses).
