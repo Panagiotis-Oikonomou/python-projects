@@ -1,0 +1,1 @@
+Creating a simulation of a PAM transmission system with 2 RRC filters one for the transmitter and one for the receiver.
