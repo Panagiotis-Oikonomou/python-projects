@@ -174,11 +174,8 @@ def question_5(bits, sps, rrc, n):
     y = y[:n*sps]
     y_r = np.convolve(y, rrc/sps)
     y_r = y_r[:n*sps]
-    # offset = sps // 2
-    # y_r = y_r[offset:]
     total_delay = 2 * 14 * sps
     y_r = y_r[total_delay:]
-    # y_r = y_r[total_delay + sps//2:]
     y_r = y_r[:1000]
     print(len(y_r))
     L = 2 * sps
@@ -204,7 +201,6 @@ def question_6(bits, sps, rrc, n):
     y_r = np.convolve(r, rrc/sps)
     y_r = y_r[:n*sps]
     total_delay = 2 * 14 * sps
-    # y_r = y_r[total_delay + sps//2:] 
     y_r = y_r[total_delay:] 
     y_r = y_r[:1000]
     L = 2 * sps
@@ -227,19 +223,12 @@ def question_7(bits, sps, rrc, n, start):
     y = y[:n*sps]
     noise = np.sqrt(1/snr) * np.random.normal(size=len(y))
     r = y + noise
-    # y_r = np.convolve(r, rrc)
     y_r = np.convolve(r, rrc)
-    # y_r = y_r[:n*sps]
 
     total_delay = 2 * 14 * sps
-    # y_r = y_r[total_delay + sps//2:]
     y_r = y_r[total_delay:]
     ds = y_r[start::sps]
 
-    # ds = y_r[start::sps]
-
-    # ds = ds[14:]
-    # print(len(ds))
     ds = ds[:100]
 
     plt.figure(figsize=(6,6))
@@ -266,32 +255,13 @@ def question_8_10(bits, sps, snr_db, rrc, n, start):
         noise = np.sqrt(1/snr) * np.random.normal(size=len(y))
         r = y + noise
         y_r = np.convolve(r, rrc/sps)
-        # y_r = y_r[:n*sps]
-        # print("First",len(y_r))
         total_delay = 2 * 14 * sps
-        # y_r = y_r[total_delay + sps//2:]
-        # print(len(y_r))
-
-        # y_r = y_r[total_delay:]
-        # y_r = y_r[sps//2:]
-        # print("Second",len(y_r))
-        # ds = y_r[::sps]
 
         y_r = y_r[total_delay:]
         ds = y_r[start::sps]
-        # print(len(y_r))
-
-        # ds = ds[14:]
-        # print("Third",len(ds))
 
         received_bits = (ds >= 0).astype(int)
-        # print("Receivde",len(received_bits))
         bits_valid = bits[28:28+len(received_bits)]
-        # print("Fourth",len(bits_valid))
-        # print(len(ds[:len(bits_valid)]))
-        # print(len(bits_valid))
-        # print(received_bits[:len(bits_valid)])
-        # print(bits_valid)
         errors = bits_valid != received_bits[:len(bits_valid)]
         pbe[idx] = np.mean(errors)
         ber_theory[idx] = norm.sf(np.sqrt(snr))
