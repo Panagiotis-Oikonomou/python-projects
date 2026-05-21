@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import math
 import numpy as np
+from scipy.integrate import quad
 
 def get_symbols(b):
     b = np.asarray(b)
@@ -92,10 +93,20 @@ def scSER(snr, L): #snr: SNR in linear scale, L: Number of antennas
 
 def question_2(ray1, ray2, symb):
     snr = 10**(15/10)
-    y1 = symb * ray1 + get_noise(1/snr, len(symb))
-    y2 = symb * ray2 + get_noise(1/snr, len(symb)) 
-    max = np.abs(ray1) >= np.abs(ray2)
-    selected = np.where(max, y1/ray1, y2/ray2)
+    N = len(symb)
+    rays = np.vstack([ray1, ray2])
+
+    ys = np.vstack([
+        symb * ray1 + get_noise(1/snr, N),
+        symb * ray2 + get_noise(1/snr, N)
+    ])
+
+    idx_best = np.argmax(np.abs(rays), axis=0)
+
+    selected_y = ys[idx_best, np.arange(N)]
+    selected_h = rays[idx_best, np.arange(N)]
+
+    selected = selected_y / selected_h
 
     detected = detector(selected)
 
@@ -104,25 +115,23 @@ def question_2(ray1, ray2, symb):
     
 def question_3(ray1, ray2, ray3, ray4, symb):
     snr = 10**(10/10)
-    y1 = symb * ray1 + get_noise(1/snr, len(symb))
-    y2 = symb * ray2 + get_noise(1/snr, len(symb))
-    y3 = symb * ray3 + get_noise(1/snr, len(symb))
-    y4 = symb * ray4 + get_noise(1/snr, len(symb))
-    
-    m1 = np.abs(ray1)
-    m2 = np.abs(ray2)
-    m3 = np.abs(ray3)
-    m4 = np.abs(ray4)
+    N = len(symb)
 
-    max12 = m1 >= m2
-    sel12 = np.where(max12, y1/ray1, y2/ray2)
+    rays = np.vstack([ray1, ray2, ray3, ray4])
 
-    max34 = m3 >= m4
-    sel34 = np.where(max34, y3/ray3, y4/ray4)
+    ys = np.vstack([
+        symb * ray1 + get_noise(1/snr, N),
+        symb * ray2 + get_noise(1/snr, N),
+        symb * ray3 + get_noise(1/snr, N),
+        symb * ray4 + get_noise(1/snr, N)
+    ])
 
-    max_final = np.abs(ray1 * max12 + ray2 * (~max12)) >= np.abs(ray3 * max34 + ray4 * (~max34))
+    idx_best = np.argmax(np.abs(rays), axis=0)
 
-    selected = np.where(max_final, sel12, sel34)
+    selected_y = ys[idx_best, np.arange(N)]
+    selected_h = rays[idx_best, np.arange(N)]
+
+    selected = selected_y / selected_h
 
     detected = detector(selected)
 
@@ -130,95 +139,150 @@ def question_3(ray1, ray2, ray3, ray4, symb):
     print(f"SER for L=4: {ser}")
 
 def question_4(ray1, ray2, ray3, ray4, symb, db):
-    theoretical_ser = np.zeros(len(db))
-    simulation_ser = np.zeros(len(db))
-    L = 4
+    theoretical_ser1 = np.zeros(len(db))
+    theoretical_ser2 = np.zeros(len(db))
+    theoretical_ser4 = np.zeros(len(db))
+    simulation_ser1 = np.zeros(len(db))
+    simulation_ser2 = np.zeros(len(db))
+    simulation_ser4 = np.zeros(len(db))
+    rays4 = np.vstack([ray1, ray2, ray3, ray4])
+    rays2 = np.vstack([ray1, ray2])
+    N = len(symb)
+
+    idx_best2 = np.argmax(np.abs(rays2), axis=0)
+    idx_best4 = np.argmax(np.abs(rays4), axis=0)
 
     for idx, i in enumerate(db):
         snr = 10**(i/10)
-        y1 = symb * ray1 + get_noise(1/snr, len(ray1))
-        y2 = symb * ray2 + get_noise(1/snr, len(ray2))
-        y3 = symb * ray3 + get_noise(1/snr, len(ray3))
-        y4 = symb * ray4 + get_noise(1/snr, len(ray4))
+        ys1 = symb * ray1 + get_noise(1/snr, N)
 
-        m1 = np.abs(ray1)
-        m2 = np.abs(ray2)
-        m3 = np.abs(ray3)
-        m4 = np.abs(ray4)
+        ys2 = np.vstack([
+            symb * ray1 + get_noise(1/snr, N),
+            symb * ray2 + get_noise(1/snr, N)
+        ])
 
-        max12 = m1 >= m2
-        sel12 = np.where(max12, y1/ray1, y2/ray2)
+        ys4 = np.vstack([
+            symb * ray1 + get_noise(1/snr, N),
+            symb * ray2 + get_noise(1/snr, N),
+            symb * ray3 + get_noise(1/snr, N),
+            symb * ray4 + get_noise(1/snr, N)
+        ])
 
-        max34 = m3 >= m4
-        sel34 = np.where(max34, y3/ray3, y4/ray4)
+        selected_y2 = ys2[idx_best2, np.arange(N)]
+        selected_h2 = rays2[idx_best2, np.arange(N)]
+        selected_y4 = ys4[idx_best4, np.arange(N)]
+        selected_h4 = rays4[idx_best4, np.arange(N)]
 
-        max_final = np.abs(ray1 * max12 + ray2 * (~max12)) >= np.abs(ray3 * max34 + ray4 * (~max34))
-
-        selected = np.where(max_final, sel12, sel34)
+        selected1 = ys1 / ray1
+        selected2 = selected_y2 / selected_h2
+        selected4 = selected_y4 / selected_h4
         
-        detected = detector(selected)
+        detected1 = detector(selected1)
+        detected2 = detector(selected2)
+        detected4 = detector(selected4)
 
-        simulation_ser[idx] = np.mean(symb != detected)
-        theoretical_ser[idx] = scSER(snr, L)
+        errors1 = np.count_nonzero(symb != detected1)
+        errors2 = np.count_nonzero(symb != detected2)
+        errors4 = np.count_nonzero(symb != detected4)
 
-    simulation_ser = np.maximum(simulation_ser, 1e-10)
-    theoretical_ser = np.maximum(theoretical_ser, 1e-10)
+        simulation_ser1[idx] = errors1 / N if errors1 >= 10 else np.nan
+        simulation_ser2[idx] = errors2 / N if errors2 >= 10 else np.nan
+        simulation_ser4[idx] = errors4 / N if errors4 >= 10 else np.nan
+
+        theoretical_ser1[idx] = scSER(snr, 1)
+        theoretical_ser2[idx] = scSER(snr, 2)
+        theoretical_ser4[idx] = scSER(snr, 4)
 
     plt.figure(figsize=(8,5))
-    plt.semilogy(db, theoretical_ser, '-', linewidth=2, label="Theoretical SER")
-    plt.semilogy(db, simulation_ser, '*', markersize=8, label="Simulated SER")
+    plt.semilogy(db, theoretical_ser1, '-', linewidth=2, label="Theoretical SER 1-Antenna")
+    plt.semilogy(db, theoretical_ser2, '-', linewidth=2, label="Theoretical SER 2-Antennas")
+    plt.semilogy(db, theoretical_ser4, '-', linewidth=2, label="Theoretical SER 4-Antennas")
+    plt.semilogy(db, simulation_ser1, '*', markersize=8, label="Simulated SER 1-Antenna")
+    plt.semilogy(db, simulation_ser2, '*', markersize=8, label="Simulated SER 2-Antennas")
+    plt.semilogy(db, simulation_ser4, '*', markersize=8, label="Simulated SER 4-Antennas")
 
     plt.xlabel("SNR (dB)")
     plt.ylabel("SER")
-    plt.title(f"SER vs SNR for {L}-branch SC")
+    plt.title(f"SER vs SNR for 1, 2, 4-branch SC")
     plt.grid(True, which='both', linestyle='--', alpha=0.6)
+    plt.minorticks_on()
+    plt.ylim(1e-8, 1)
     plt.legend()
     plt.show()
 
 def question_5(ray1, ray2, ray3, ray4, symb, b, db):
-    theoretical_ser = np.zeros(len(db))
-    simulation_ser = np.zeros(len(db))
-    L = 4
+    theoretical_ser1 = np.zeros(len(db))
+    theoretical_ser2 = np.zeros(len(db))
+    theoretical_ser4 = np.zeros(len(db))
+    simulation_ser1 = np.zeros(len(db))
+    simulation_ser2 = np.zeros(len(db))
+    simulation_ser4 = np.zeros(len(db))
+    rays4 = np.vstack([ray1, ray2, ray3, ray4])
+    rays2 = np.vstack([ray1, ray2])
+    N = len(symb)
+
+    idx_best2 = np.argmax(np.abs(rays2), axis=0)
+    idx_best4 = np.argmax(np.abs(rays4), axis=0)
 
     for idx, i in enumerate(db):
         snr = 10**(i/10)
-        y1 = symb * ray1 + get_noise(1/snr, len(ray1))
-        y2 = symb * ray2 + get_noise(1/snr, len(ray2))
-        y3 = symb * ray3 + get_noise(1/snr, len(ray3))
-        y4 = symb * ray4 + get_noise(1/snr, len(ray4))
+        ys1 = symb * ray1 + get_noise(1/snr, N)
 
-        m1 = np.abs(ray1)
-        m2 = np.abs(ray2)
-        m3 = np.abs(ray3)
-        m4 = np.abs(ray4)
+        ys2 = np.vstack([
+            symb * ray1 + get_noise(1/snr, N),
+            symb * ray2 + get_noise(1/snr, N)
+        ])
 
-        max12 = m1 >= m2
-        sel12 = np.where(max12, y1/ray1, y2/ray2)
+        ys4 = np.vstack([
+            symb * ray1 + get_noise(1/snr, N),
+            symb * ray2 + get_noise(1/snr, N),
+            symb * ray3 + get_noise(1/snr, N),
+            symb * ray4 + get_noise(1/snr, N)
+        ])
 
-        max34 = m3 >= m4
-        sel34 = np.where(max34, y3/ray3, y4/ray4)
+        selected_y2 = ys2[idx_best2, np.arange(N)]
+        selected_h2 = rays2[idx_best2, np.arange(N)]
+        selected_y4 = ys4[idx_best4, np.arange(N)]
+        selected_h4 = rays4[idx_best4, np.arange(N)]
 
-        max_final = np.abs(ray1 * max12 + ray2 * (~max12)) >= np.abs(ray3 * max34 + ray4 * (~max34))
-
-        selected = np.where(max_final, sel12, sel34)
+        selected1 = ys1 / ray1
+        selected2 = selected_y2 / selected_h2
+        selected4 = selected_y4 / selected_h4
         
-        detected = detector(selected)
-        r_b = get_received_bits(detected)
+        detected1 = detector(selected1)
+        detected2 = detector(selected2)
+        detected4 = detector(selected4)
 
-        simulation_ser[idx] = np.mean(b != r_b)
-        theoretical_ser[idx] = scSER(snr, L) / 2
+        r1 = get_received_bits(detected1)
+        r2 = get_received_bits(detected2)
+        r4 = get_received_bits(detected4)
 
-    simulation_ser = np.maximum(simulation_ser, 1e-10)
-    theoretical_ser = np.maximum(theoretical_ser, 1e-10)
+        errors1 = np.count_nonzero(b != r1)
+        errors2 = np.count_nonzero(b != r2)
+        errors4 = np.count_nonzero(b != r4)
+
+        simulation_ser1[idx] = errors1 / len(b) if errors1 >= 10 else np.nan
+        simulation_ser2[idx] = errors2 / len(b) if errors2 >= 10 else np.nan
+        simulation_ser4[idx] = errors4 / len(b) if errors4 >= 10 else np.nan
+
+        theoretical_ser1[idx] = scSER(snr, 1) / 2
+        theoretical_ser2[idx] = scSER(snr, 2) / 2
+        theoretical_ser4[idx] = scSER(snr, 4) / 2
 
     plt.figure(figsize=(8,5))
-    plt.semilogy(db, theoretical_ser, '-', linewidth=2, label="Theoretical BER")
-    plt.semilogy(db, simulation_ser, '*', markersize=8, label="Simulated BER")
+    plt.semilogy(db, theoretical_ser1, '-', linewidth=2, label="Theoretical BER 1-Antenna")
+    plt.semilogy(db, theoretical_ser2, '-', linewidth=2, label="Theoretical BER 2-Antennas")
+    plt.semilogy(db, theoretical_ser4, '-', linewidth=2, label="Theoretical BER 4-Antennas")
+    plt.semilogy(db, simulation_ser1, '*', markersize=8, label="Simulated BER 1-Antenna")
+    plt.semilogy(db, simulation_ser2, '*', markersize=8, label="Simulated BER 2-Antennas")
+    plt.semilogy(db, simulation_ser4, '*', markersize=8, label="Simulated BER 4-Antennas")
 
     plt.xlabel("SNR (dB)")
     plt.ylabel("BER")
-    plt.title(f"BER vs SNR for {L}-branch SC")
+    plt.title(f"BER vs SNR for 1, 2, 4-branch SC")
     plt.grid(True, which='both', linestyle='--', alpha=0.6)
+    plt.minorticks_on()
+    plt.ylim(1e-8, 1)
     plt.legend()
     plt.show()
 

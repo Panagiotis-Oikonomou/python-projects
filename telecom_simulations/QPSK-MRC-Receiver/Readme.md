@@ -1,0 +1,1 @@
+This project simulates a digital wireless communication system using QPSK modulation over Rayleigh fading channels with AWGN noise. It evaluates the performance of diversity reception of the Maximum Ratio Combining (MRC) technique, using Bit Error Rate (BER) and Symbol Error Rate (SER) metrics for 1, 2 and 4 brances.
